@@ -28,8 +28,6 @@ type Auction {
   numBidders: Int!
   totalBidAmount: BigInt!
   updatedAt: Int!
-  # Bid tracking for checkpoint calculations
-  bidIds: [String!]!
 }
 
 type Bid @index(fields: ["auctionId", "maxPriceQ96"]) {
@@ -71,10 +69,12 @@ type Step {
   mps: Int!
 }
 
-type Checkpoint {
+type Checkpoint
+  @index(fields: ["auctionId", "blockNumber"])
+  @index(fields: ["auctionId", "clearingPriceQ96"]) {
   id: ID! # {auctionAddr}:{blockNumber}
   auctionId: String! @index
-  blockNumber: Int! @index
+  blockNumber: Int!
   clearingPriceQ96: BigInt!
   currencyRaisedAtClearingPriceQ96_X7: BigInt!
   cumulativeMps: Int!

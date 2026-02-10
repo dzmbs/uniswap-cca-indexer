@@ -1,4 +1,5 @@
 {
+  "exclude": ["reference", "node_modules", "generated"],
   "compilerOptions": {
     "esModuleInterop": true,
     "skipLibCheck": true,
