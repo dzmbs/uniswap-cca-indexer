@@ -3,11 +3,9 @@ name: uniswap-cca-indexer
 rollback_on_reorg: false
 contracts:
   - name: CCAFactory
-    handler: src/factory.ts
     events:
       - event: AuctionCreated(address indexed auction, address indexed token, uint256 amount, bytes configData)
   - name: Auction
-    handler: src/auction.ts
     events:
       - event: AuctionStepRecorded(uint256 startBlock, uint256 endBlock, uint24 mps)
       - event: TickInitialized(uint256 price)
@@ -26,14 +24,30 @@ contracts:
             - "hash"
       - event: TokensReceived(uint256 totalSupply)
 chains:
+  - id: 1
+    start_block: 24321669
+    contracts:
+      - name: CCAFactory
+        address:
+          - 0xCCccCcCAE7503Cac057829BF2811De42E16e0bD5
+      # Aztec Ethereum auction (non-canonical factory deployment), indexed directly.
+      - name: Auction
+        address:
+          - 0x608c4e792C65f5527B3f70715deA44d3b302F4Ee
   - id: 8453
-    start_block: 41336765
+    start_block: 41336767
     contracts:
       - name: CCAFactory
         address:
           - 0xCCccCcCAE7503Cac057829BF2811De42E16e0bD5
   - id: 42161
-    start_block: 425561182
+    start_block: 425561184
+    contracts:
+      - name: CCAFactory
+        address:
+          - 0xCCccCcCAE7503Cac057829BF2811De42E16e0bD5
+  - id: 130
+    start_block: 38733234
     contracts:
       - name: CCAFactory
         address:
