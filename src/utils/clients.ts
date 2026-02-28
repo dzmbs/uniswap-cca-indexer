@@ -5,7 +5,7 @@ const unichainMainnet = defineChain({
   id: 130,
   name: 'Unichain',
   nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-  rpcUrls: { default: { http: ['https://unichain.drpc.org'] } },
+  rpcUrls: { default: { http: ['https://unichain-rpc.publicnode.com'] } },
   blockExplorers: { default: { name: 'Uniscan', url: 'https://uniscan.xyz' } },
   contracts: {
     multicall3: {
@@ -16,10 +16,10 @@ const unichainMainnet = defineChain({
 });
 
 const DEFAULT_RPC_URLS: Record<number, string> = {
-  1: 'https://eth.drpc.org',
-  8453: 'https://base.drpc.org',
-  42161: 'https://arbitrum.drpc.org',
-  130: 'https://unichain.drpc.org',
+  1: 'https://eth.llamarpc.com',
+  8453: 'https://base.llamarpc.com',
+  42161: 'https://api.zan.top/arb-one',
+  130: 'https://unichain-rpc.publicnode.com',
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
