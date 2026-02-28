@@ -25,7 +25,7 @@ contracts:
       - event: TokensReceived(uint256 totalSupply)
 chains:
   - id: 1
-    start_block: 24321669
+    start_block: 24321668
     contracts:
       - name: CCAFactory
         address:
