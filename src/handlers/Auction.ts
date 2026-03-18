@@ -5,18 +5,17 @@ import { readAuctionSnapshot, readCheckpointBundle, readSteps, readTickAtBlock, 
 // --- Types ---
 
 type CheckpointLike = {
-  blockNumber: number;
+  blockNumber: bigint;
   clearingPriceQ96: bigint;
   cumulativeMps: number;
   cumulativeMpsPerPrice: bigint;
   currencyRaisedAtClearingPriceQ96_X7: bigint;
 };
 
-// Find the most recent checkpoint at or before the given blockNumber.
-function checkpointAtOrBefore(checkpoints: CheckpointLike[], blockNumber: number): CheckpointLike | undefined {
+function checkpointAtOrBefore(checkpoints: CheckpointLike[], blockNumber: bigint): CheckpointLike | undefined {
   return checkpoints
     .filter((c: CheckpointLike) => c.blockNumber <= blockNumber)
-    .sort((a: CheckpointLike, b: CheckpointLike) => b.blockNumber - a.blockNumber)[0];
+    .sort((a: CheckpointLike, b: CheckpointLike) => Number(b.blockNumber - a.blockNumber))[0];
 }
 
 async function ensureAuctionLoaded(event: any, context: any, auction: any) {
@@ -46,16 +45,16 @@ async function ensureAuctionLoaded(event: any, context: any, auction: any) {
       token: snapshot.token,
       currency: snapshot.currency,
       amount: BigInt(snapshot.totalSupply),
-      startBlock: snapshot.startBlock,
-      endBlock: snapshot.endBlock,
-      claimBlock: snapshot.claimBlock,
+      startBlock: BigInt(snapshot.startBlock),
+      endBlock: BigInt(snapshot.endBlock),
+      claimBlock: BigInt(snapshot.claimBlock),
       totalSupply: BigInt(snapshot.totalSupply),
       floorPrice: BigInt(snapshot.floorPrice),
       tickSpacing: BigInt(snapshot.tickSpacing),
       validationHook: snapshot.validationHook,
       requiredCurrencyRaised: 0n,
-      createdAt: event.block.number,
-      lastCheckpointedBlock: 0,
+      createdAt: BigInt(event.block.number),
+      lastCheckpointedBlock: 0n,
       lastClearingPriceQ96: 0n,
       currencyRaised: 0n,
       totalCleared: 0n,
@@ -63,26 +62,26 @@ async function ensureAuctionLoaded(event: any, context: any, auction: any) {
       remainingMps: 0n,
       availableSupply: 0n,
       currentStepMps: 0,
-      currentStepStartBlock: 0,
-      currentStepEndBlock: 0,
+      currentStepStartBlock: 0n,
+      currentStepEndBlock: 0n,
       numBids: 0,
       numBidders: 0,
       totalBidAmount: 0n,
-      updatedAt: event.block.timestamp,
+      updatedAt: BigInt(event.block.timestamp),
     };
 
     const stepsJson = await context.effect(readSteps, `${event.chainId}:${event.srcAddress}:${snapshot.startBlock}`);
     const steps: { mps: number; startBlock: number; endBlock: number }[] = JSON.parse(stepsJson);
     for (let i = 0; i < steps.length; i++) {
       const s = steps[i]!;
-      context.Step.set({ id: `${addr}:${i}`, auctionId: addr, startBlock: s.startBlock, endBlock: s.endBlock, mps: s.mps });
+      context.Step.set({ id: `${addr}:${i}`, auctionId: addr, startBlock: BigInt(s.startBlock), endBlock: BigInt(s.endBlock), mps: s.mps });
     }
 
     if (steps.length > 0) {
       const first = steps[0]!;
       created.currentStepMps = first.mps;
-      created.currentStepStartBlock = first.startBlock;
-      created.currentStepEndBlock = first.endBlock;
+      created.currentStepStartBlock = BigInt(first.startBlock);
+      created.currentStepEndBlock = BigInt(first.endBlock);
     }
 
     context.Auction.set(created);
@@ -113,9 +112,9 @@ AuctionContract.AuctionStepRecorded.handler(async ({ event, context }) => {
   context.Auction.set({
     ...auction,
     currentStepMps: Number(event.params.mps),
-    currentStepStartBlock: Number(event.params.startBlock),
-    currentStepEndBlock: Number(event.params.endBlock),
-    updatedAt: event.block.timestamp,
+    currentStepStartBlock: BigInt(event.params.startBlock),
+    currentStepEndBlock: BigInt(event.params.endBlock),
+    updatedAt: BigInt(event.block.timestamp),
   });
 });
 
@@ -138,7 +137,6 @@ AuctionContract.TickInitialized.handler(async ({ event, context }) => {
 AuctionContract.BidSubmitted.handler(async ({ event, context }) => {
   const addr = event.srcAddress.toLowerCase();
 
-  // Preload reads — must be at top.
   let auction = await context.Auction.get(addr);
   const existingBids = await context.Bid.getWhere.auctionId.eq(addr);
   const allTicks = await context.Tick.getWhere.auctionId.eq(addr);
@@ -154,7 +152,7 @@ AuctionContract.BidSubmitted.handler(async ({ event, context }) => {
     amount: event.params.amount,
     maxPriceQ96: event.params.price,
     owner: event.params.owner.toLowerCase(),
-    startBlock: event.block.number,
+    startBlock: BigInt(event.block.number),
     transactionHash: event.transaction.hash,
     tokensFilled: 0n,
     amountFilled: 0n,
@@ -162,7 +160,7 @@ AuctionContract.BidSubmitted.handler(async ({ event, context }) => {
     amountRefunded: 0n,
     exited: false,
     claimed: false,
-    lastFullyFilledCheckpointBlock: event.block.number,
+    lastFullyFilledCheckpointBlock: BigInt(event.block.number),
     outbidCheckpointBlock: undefined,
     exitedBlock: undefined,
     exitTransactionHash: undefined,
@@ -178,17 +176,15 @@ AuctionContract.BidSubmitted.handler(async ({ event, context }) => {
     numBids: auction.numBids + 1,
     numBidders: uniqueOwners.size,
     totalBidAmount: auction.totalBidAmount + event.params.amount,
-    updatedAt: event.block.timestamp,
+    updatedAt: BigInt(event.block.timestamp),
   });
 
-  // Find prev tick from in-memory list before making any RPC calls.
   const prevTick = allTicks
     .filter((t) => t.priceQ96 < event.params.price)
     .sort((a, b) => (a.priceQ96 === b.priceQ96 ? 0 : a.priceQ96 > b.priceQ96 ? -1 : 1))[0];
 
   if (context.isPreload) return;
 
-  // One multicall: current tick + prev tick (prev = 0 means single-read path).
   const prevPrice = prevTick?.priceQ96 ?? 0n;
   let pairData: {
     tick: { next: string; currencyDemandQ96: string };
@@ -231,7 +227,6 @@ AuctionContract.BidSubmitted.handler(async ({ event, context }) => {
 AuctionContract.CheckpointUpdated.handler(async ({ event, context }) => {
   const addr = event.srcAddress.toLowerCase();
 
-  // Preload reads — must be at top.
   let auction = await context.Auction.get(addr);
   const allBids = await context.Bid.getWhere.auctionId.eq(addr);
   const allCheckpoints = await context.Checkpoint.getWhere.auctionId.eq(addr);
@@ -242,7 +237,6 @@ AuctionContract.CheckpointUpdated.handler(async ({ event, context }) => {
 
   const blockNumberStr = event.params.blockNumber.toString();
 
-  // One multicall: checkpoints() + totalCleared() + currencyRaised() pinned to this block.
   let bundle: {
     currencyRaisedAtClearingPriceQ96_X7: string;
     cumulativeMpsPerPrice: string;
@@ -267,10 +261,12 @@ AuctionContract.CheckpointUpdated.handler(async ({ event, context }) => {
     return;
   }
 
+  const cpBlockNumber = BigInt(event.params.blockNumber);
+
   const cp = {
     id: `${addr}:${blockNumberStr}`,
     auctionId: addr,
-    blockNumber: Number(event.params.blockNumber),
+    blockNumber: cpBlockNumber,
     clearingPriceQ96: event.params.clearingPrice,
     currencyRaisedAtClearingPriceQ96_X7: BigInt(bundle.currencyRaisedAtClearingPriceQ96_X7),
     cumulativeMps: Number(event.params.cumulativeMps),
@@ -292,16 +288,14 @@ AuctionContract.CheckpointUpdated.handler(async ({ event, context }) => {
     totalCleared: BigInt(bundle.totalCleared),
     remainingMps,
     availableSupply,
-    updatedAt: event.block.timestamp,
+    updatedAt: BigInt(event.block.timestamp),
   });
 
-  // Categorise bids by fill status.
   const bidsFullyFilled = allBids.filter((b) => b.maxPriceQ96 > cp.clearingPriceQ96 && !b.exited);
   const bidsPartiallyFilled = allBids.filter(
     (b) => b.maxPriceQ96 === cp.clearingPriceQ96 && !b.exited && b.outbidCheckpointBlock == null,
   );
 
-  // Only needed for partial-fill math; avoids invalid ticks(clearingPrice) on non-boundary prices.
   let tickDemandQ96 = 0n;
   if (bidsPartiallyFilled.length > 0) {
     try {
@@ -319,15 +313,13 @@ AuctionContract.CheckpointUpdated.handler(async ({ event, context }) => {
     }
   }
 
-  // Build checkpoint lookup map (allCheckpoints from DB + cp being set now).
-  const cpMap = new Map<number, CheckpointLike>();
-  for (const c of allCheckpoints) cpMap.set(c.blockNumber, c);
-  cpMap.set(cp.blockNumber, cp);
+  // Build checkpoint lookup map using bigint keys (as strings for Map compatibility).
+  const cpMap = new Map<string, CheckpointLike>();
+  for (const c of allCheckpoints) cpMap.set(c.blockNumber.toString(), c);
+  cpMap.set(cp.blockNumber.toString(), cp);
 
-  // Process fully filled bids.
   for (const b of bidsFullyFilled) {
-    // Use the most-recent checkpoint at or before the bid's submission block as baseline.
-    const bidCp = cpMap.get(b.startBlock) ?? checkpointAtOrBefore(allCheckpoints, b.startBlock);
+    const bidCp = cpMap.get(b.startBlock.toString()) ?? checkpointAtOrBefore(allCheckpoints, b.startBlock);
     if (!bidCp) continue;
 
     const mpsRemaining = MPS - BigInt(bidCp.cumulativeMps);
@@ -342,23 +334,18 @@ AuctionContract.CheckpointUpdated.handler(async ({ event, context }) => {
     context.Bid.set({ ...b, tokensFilled, amountFilled, lastFullyFilledCheckpointBlock: cp.blockNumber });
   }
 
-  // Process partially filled bids.
   if (bidsPartiallyFilled.length > 0) {
-    // Last checkpoint where clearing price was strictly lower than current.
-    // May be undefined if the clearing price has never been lower (first-ever checkpoint at this price).
     const lastFullyCp = allCheckpoints
       .filter((c: CheckpointLike) => c.clearingPriceQ96 < cp.clearingPriceQ96)
-      .sort((a: CheckpointLike, b: CheckpointLike) => b.blockNumber - a.blockNumber)[0];
+      .sort((a: CheckpointLike, b: CheckpointLike) => Number(b.blockNumber - a.blockNumber))[0];
 
     for (const b of bidsPartiallyFilled) {
-      const bidCp = cpMap.get(b.startBlock) ?? checkpointAtOrBefore(allCheckpoints, b.startBlock);
+      const bidCp = cpMap.get(b.startBlock.toString()) ?? checkpointAtOrBefore(allCheckpoints, b.startBlock);
       if (!bidCp) continue;
 
       const mpsRemaining = MPS - BigInt(bidCp.cumulativeMps);
       if (mpsRemaining === 0n) continue;
 
-      // Fully filled portion: bid.startBlock → lastFullyCp (period when clearingPrice < bidMaxPrice).
-      // Skipped (zero) if there's no prior checkpoint at a lower price.
       let tokensFilled = 0n;
       let currencySpent = 0n;
       if (lastFullyCp) {
@@ -368,7 +355,6 @@ AuctionContract.CheckpointUpdated.handler(async ({ event, context }) => {
         currencySpent = tokensFilled !== 0n ? (b.amount * cumulativeMpsDelta) / mpsRemaining : 0n;
       }
 
-      // Partial fill portion: accumulated currency raised at current clearing price.
       const denominator = tickDemandQ96 * mpsRemaining;
       if (denominator > 0n) {
         const partialCurrency =
@@ -384,7 +370,6 @@ AuctionContract.CheckpointUpdated.handler(async ({ event, context }) => {
     }
   }
 
-  // Mark outbid bids.
   for (const b of allBids) {
     if (b.maxPriceQ96 < cp.clearingPriceQ96 && b.outbidCheckpointBlock == null) {
       context.Bid.set({ ...b, outbidCheckpointBlock: cp.blockNumber });
@@ -410,11 +395,9 @@ AuctionContract.BidExited.handler(async ({ event, context }) => {
   context.Bid.set({
     ...bid,
     exited: true,
-    exitedBlock: event.block.number,
+    exitedBlock: BigInt(event.block.number),
     exitTransactionHash: event.transaction.hash,
     tokensFilled: event.params.tokensFilled,
-    // Contract: refund = saturatingSub(amountQ96, currencySpentQ96) >> 96
-    // So amountFilled = amount - currencyRefunded (authoritative from contract)
     amountFilled: bid.amount - event.params.currencyRefunded,
     amountRefunded: event.params.currencyRefunded,
   });
@@ -439,7 +422,7 @@ AuctionContract.TokensClaimed.handler(async ({ event, context }) => {
   context.Bid.set({
     ...bid,
     claimed: true,
-    claimedBlock: event.block.number,
+    claimedBlock: BigInt(event.block.number),
     claimTransactionHash: event.transaction.hash,
     tokensClaimed: event.params.tokensFilled,
     tokensFilled: event.params.tokensFilled,

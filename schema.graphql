@@ -4,16 +4,16 @@ type Auction {
   token: String!
   currency: String!
   amount: BigInt!
-  startBlock: Int!
-  endBlock: Int!
-  claimBlock: Int!
+  startBlock: BigInt!
+  endBlock: BigInt!
+  claimBlock: BigInt!
   totalSupply: BigInt!
   floorPrice: BigInt!
   tickSpacing: BigInt!
   validationHook: String!
-  createdAt: Int!
+  createdAt: BigInt!
   # Live state
-  lastCheckpointedBlock: Int!
+  lastCheckpointedBlock: BigInt!
   lastClearingPriceQ96: BigInt!
   currencyRaised: BigInt!
   totalCleared: BigInt!
@@ -22,12 +22,12 @@ type Auction {
   remainingMps: BigInt!
   availableSupply: BigInt!
   currentStepMps: Int!
-  currentStepStartBlock: Int!
-  currentStepEndBlock: Int!
+  currentStepStartBlock: BigInt!
+  currentStepEndBlock: BigInt!
   numBids: Int!
   numBidders: Int!
   totalBidAmount: BigInt!
-  updatedAt: Int!
+  updatedAt: BigInt!
 }
 
 type Bid @index(fields: ["auctionId", "maxPriceQ96"]) {
@@ -36,17 +36,17 @@ type Bid @index(fields: ["auctionId", "maxPriceQ96"]) {
   amount: BigInt!
   maxPriceQ96: BigInt!
   owner: String! @index
-  startBlock: Int!
+  startBlock: BigInt!
   transactionHash: String!
   tokensFilled: BigInt!
   amountFilled: BigInt!
-  lastFullyFilledCheckpointBlock: Int!
-  outbidCheckpointBlock: Int
+  lastFullyFilledCheckpointBlock: BigInt!
+  outbidCheckpointBlock: BigInt
   exited: Boolean!
-  exitedBlock: Int
+  exitedBlock: BigInt
   exitTransactionHash: String
   claimed: Boolean!
-  claimedBlock: Int
+  claimedBlock: BigInt
   claimTransactionHash: String
   tokensClaimed: BigInt!
   amountRefunded: BigInt!
@@ -64,8 +64,8 @@ type Tick {
 type Step {
   id: ID! # {auctionAddr}:{stepIndex}
   auctionId: String! @index
-  startBlock: Int!
-  endBlock: Int!
+  startBlock: BigInt!
+  endBlock: BigInt!
   mps: Int!
 }
 
@@ -74,7 +74,7 @@ type Checkpoint
   @index(fields: ["auctionId", "clearingPriceQ96"]) {
   id: ID! # {auctionAddr}:{blockNumber}
   auctionId: String! @index
-  blockNumber: Int!
+  blockNumber: BigInt!
   clearingPriceQ96: BigInt!
   currencyRaisedAtClearingPriceQ96_X7: BigInt!
   cumulativeMps: Int!

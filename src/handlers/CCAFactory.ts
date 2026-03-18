@@ -19,9 +19,9 @@ const CONFIG_COMPONENTS = [{ type: 'tuple', components: [
 type DecodedConfig = {
   currency: string;
   validationHook: string;
-  startBlock: number;
-  endBlock: number;
-  claimBlock: number;
+  startBlock: bigint;
+  endBlock: bigint;
+  claimBlock: bigint;
   floorPrice: bigint;
   tickSpacing: bigint;
   requiredCurrencyRaised: bigint;
@@ -33,9 +33,9 @@ function decodeConfig(configData: string): DecodedConfig | null {
     return {
       currency:               p.currency.toLowerCase(),
       validationHook:         p.validationHook.toLowerCase(),
-      startBlock:             Number(p.startBlock),
-      endBlock:               Number(p.endBlock),
-      claimBlock:             Number(p.claimBlock),
+      startBlock:             BigInt(p.startBlock),
+      endBlock:               BigInt(p.endBlock),
+      claimBlock:             BigInt(p.claimBlock),
       floorPrice:             p.floorPrice,
       tickSpacing:            p.tickSpacing,
       requiredCurrencyRaised: p.requiredCurrencyRaised,
@@ -50,7 +50,6 @@ CCAFactory.AuctionCreated.contractRegister(({ event, context }) => {
 });
 
 CCAFactory.AuctionCreated.handler(async ({ event, context }) => {
-
   const cfg = decodeConfig(event.params.configData);
   if (!cfg) return;
 
@@ -70,8 +69,8 @@ CCAFactory.AuctionCreated.handler(async ({ event, context }) => {
     tickSpacing: cfg.tickSpacing,
     validationHook: cfg.validationHook,
     requiredCurrencyRaised: cfg.requiredCurrencyRaised,
-    createdAt: event.block.number,
-    lastCheckpointedBlock: 0,
+    createdAt: BigInt(event.block.number),
+    lastCheckpointedBlock: 0n,
     lastClearingPriceQ96: 0n,
     currencyRaised: 0n,
     totalCleared: 0n,
@@ -79,19 +78,18 @@ CCAFactory.AuctionCreated.handler(async ({ event, context }) => {
     remainingMps: 0n,
     availableSupply: 0n,
     currentStepMps: 0,
-    currentStepStartBlock: 0,
-    currentStepEndBlock: 0,
+    currentStepStartBlock: 0n,
+    currentStepEndBlock: 0n,
     numBids: 0,
     numBidders: 0,
     totalBidAmount: 0n,
-    updatedAt: event.block.timestamp,
+    updatedAt: BigInt(event.block.timestamp),
   });
 
   if (context.isPreload) return;
 
   const key = `${event.chainId}:${event.params.auction}`;
 
-  // Read totalSupply — may be 0 if TokensReceived hasn't fired yet; that handler will update it.
   try {
     const totalSupplyStr = await context.effect(readTotalSupply, key);
     const totalSupply = BigInt(totalSupplyStr);
@@ -105,12 +103,11 @@ CCAFactory.AuctionCreated.handler(async ({ event, context }) => {
 
   let steps: { mps: number; startBlock: number; endBlock: number }[] = [];
   try {
-    // Parse steps from SSTORE2 pointer bytecode.
     const stepsJson = await context.effect(readSteps, `${key}:${cfg.startBlock}`);
     steps = JSON.parse(stepsJson) as { mps: number; startBlock: number; endBlock: number }[];
     for (let i = 0; i < steps.length; i++) {
       const s = steps[i]!;
-      context.Step.set({ id: `${addr}:${i}`, auctionId: addr, startBlock: s.startBlock, endBlock: s.endBlock, mps: s.mps });
+      context.Step.set({ id: `${addr}:${i}`, auctionId: addr, startBlock: BigInt(s.startBlock), endBlock: BigInt(s.endBlock), mps: s.mps });
     }
 
     if (steps.length > 0) {
@@ -120,9 +117,9 @@ CCAFactory.AuctionCreated.handler(async ({ event, context }) => {
         context.Auction.set({
           ...auction,
           currentStepMps: first.mps,
-          currentStepStartBlock: first.startBlock,
-          currentStepEndBlock: first.endBlock,
-          updatedAt: event.block.timestamp,
+          currentStepStartBlock: BigInt(first.startBlock),
+          currentStepEndBlock: BigInt(first.endBlock),
+          updatedAt: BigInt(event.block.timestamp),
         });
       }
     }

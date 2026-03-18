@@ -24,7 +24,7 @@ export const readTotalSupply = createEffect(
     name: 'readTotalSupply',
     input: S.string,
     output: S.string,
-    rateLimit: effectRate('EFFECT_RPS_READ_TOTAL_SUPPLY', 2),
+    rateLimit: effectRate('EFFECT_RPS_READ_TOTAL_SUPPLY', 40),
     cache: false,
   },
   async ({ input }) => {
@@ -42,7 +42,7 @@ export const readAuctionSnapshot = createEffect(
     name: 'readAuctionSnapshot',
     input: S.string,
     output: S.string,
-    rateLimit: effectRate('EFFECT_RPS_READ_AUCTION_SNAPSHOT', 1),
+    rateLimit: effectRate('EFFECT_RPS_READ_AUCTION_SNAPSHOT', 20),
     cache: true,
   },
   async ({ input }) => {
@@ -88,7 +88,7 @@ export const readSteps = createEffect(
     name: 'readSteps',
     input: S.string,
     output: S.string,
-    rateLimit: effectRate('EFFECT_RPS_READ_STEPS', 1),
+    rateLimit: effectRate('EFFECT_RPS_READ_STEPS', 40),
     cache: true,
   },
   async ({ input }) => {
@@ -133,7 +133,7 @@ export const readCheckpointBundle = createEffect(
     name: 'readCheckpointBundle',
     input: S.string,
     output: S.string,
-    rateLimit: effectRate('EFFECT_RPS_READ_CHECKPOINT_BUNDLE', 6),
+    rateLimit: effectRate('EFFECT_RPS_READ_CHECKPOINT_BUNDLE', 50),
     cache: false,
   },
   async ({ input }) => {
@@ -172,7 +172,7 @@ export const readTickAtBlock = createEffect(
     name: 'readTickAtBlock',
     input: S.string,
     output: S.string,
-    rateLimit: effectRate('EFFECT_RPS_READ_TICK_AT_BLOCK', 3),
+    rateLimit: effectRate('EFFECT_RPS_READ_TICK_AT_BLOCK', 40),
     cache: false,
   },
   async ({ input }) => {
@@ -202,7 +202,7 @@ export const readTickPair = createEffect(
     name: 'readTickPair',
     input: S.string,
     output: S.string,
-    rateLimit: effectRate('EFFECT_RPS_READ_TICK_PAIR', 6),
+    rateLimit: effectRate('EFFECT_RPS_READ_TICK_PAIR', 50),
     cache: false,
   },
   async ({ input }) => {
