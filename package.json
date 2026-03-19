@@ -13,7 +13,7 @@
     "viem": "2.21.0"
   },
   "dependencies": {
-    "envio": "3.0.0-alpha.11"
+    "envio": "3.0.0-alpha.18"
   },
   "optionalDependencies": {
     "generated": "./generated"
