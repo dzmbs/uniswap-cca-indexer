@@ -138,8 +138,8 @@ AuctionContract.BidSubmitted.handler(async ({ event, context }) => {
   const addr = event.srcAddress.toLowerCase();
 
   let auction = await context.Auction.get(addr);
-  const existingBids = await context.Bid.getWhere.auctionId.eq(addr);
-  const allTicks = await context.Tick.getWhere.auctionId.eq(addr);
+  const existingBids = await context.Bid.getWhere({ auctionId: { _eq: addr } });
+  const allTicks = await context.Tick.getWhere({ auctionId: { _eq: addr } });
 
   auction = await ensureAuctionLoaded(event, context, auction);
   if (!auction) return;
@@ -228,8 +228,8 @@ AuctionContract.CheckpointUpdated.handler(async ({ event, context }) => {
   const addr = event.srcAddress.toLowerCase();
 
   let auction = await context.Auction.get(addr);
-  const allBids = await context.Bid.getWhere.auctionId.eq(addr);
-  const allCheckpoints = await context.Checkpoint.getWhere.auctionId.eq(addr);
+  const allBids = await context.Bid.getWhere({ auctionId: { _eq: addr } });
+  const allCheckpoints = await context.Checkpoint.getWhere({ auctionId: { _eq: addr } });
 
   auction = await ensureAuctionLoaded(event, context, auction);
   if (!auction) return;
